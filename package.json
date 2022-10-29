@@ -1,0 +1,23 @@
+{
+  "name": "tron-",
+  "version": "1.0.0",
+  "description": "Tron practice",
+  "main": "tron_api_key.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Unchain68/Tron-.git"
+  },
+  "author": "",
+  "license": "Apache License 2.0",
+  "bugs": {
+    "url": "https://github.com/Unchain68/Tron-/issues"
+  },
+  "homepage": "https://github.com/Unchain68/Tron-#readme",
+  "dependencies": {
+    "request": "^2.88.2",
+    "tronweb": "^4.4.0"
+  }
+}
