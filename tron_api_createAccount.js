@@ -22,7 +22,6 @@ tronWeb.createAccount().then(v => {
   address_base58 = v.address.base58;
   address_hex = v.address.hex;
 
-  address_base58 = v.address_base58;
   console.log(
     'privateKey: ' + privateKey + '\n' +
     'publicKey: ' + publicKey + '\n' +
@@ -30,3 +29,5 @@ tronWeb.createAccount().then(v => {
     'address_hex: ' + address_hex
   )
 });
+
+
