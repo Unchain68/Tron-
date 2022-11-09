@@ -11,16 +11,19 @@ contract token is ERC1155 {
     uint256 public constant SONGNFT = 2;
     
     mapping (uint256 => string) private _uris;
+    mapping (uint256 => uint256) private tokenRate;
+    mapping (uint256 => uint256) private season;
 
     address owner;
     address stakeContract;
-    uint public test;
+    uint256 public currentSeason;
 
     constructor() public ERC1155("https://bafybeidobelazh63dhafch3yel6hjiw5rxgan7jz2oh7vc2fk2s6suielq.ipfs.dweb.link/{id}.json") {
         _mint(msg.sender, MAIN, 100, "");
         _mint(msg.sender, SUB, 100, "");
         _mint(msg.sender, SONGNFT, 1, "");
         owner = msg.sender;
+        currentSeason = 1;
     }
 
     modifier onlyOwner{
@@ -47,8 +50,18 @@ contract token is ERC1155 {
     }
 
     // need onlyowner
-    function minting(address _account, uint _tokenId, string memory _tokenuri) public {
+    function mintNFT(address _account, uint _tokenId, string memory _tokenuri, uint256 _tokenRate) public {
         _mint(_account, _tokenId, 1, "");
-        setTokenUri(_tokenId, _tokenuri,0);
+        setTokenUri(_tokenId, _tokenuri, 0);
+        tokenRate[_tokenId] = _tokenRate;
+        season[_tokenId] = currentSeason;
+    }
+
+    function viewTokenRate(uint256 _tokenId) public returns(uint256){
+        return tokenRate[_tokenId];
+    }
+
+    function updateSeason() public onlyOwner{
+        currentSeason++;
     }
 }
