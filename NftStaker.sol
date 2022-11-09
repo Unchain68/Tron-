@@ -9,12 +9,21 @@ contract NftStaker {
 
     struct Stake {
         uint256 tokenId;
-        uint256 amount;
+        uint256 rate;
         uint256 timestamp;
     }
+    
+    // need dynamic value
+    // uint constant SS = 10;
+    // uint constant S = 20;
+    // uint constant A = 30;
+    // uint constant B = 40;
+    // uint constant C = 50;
 
-    uint256 totalSupply;
-    uint constant tokenRate = 10;
+    mapping(uint256 => uint256) seasonSupply;
+    uint256 totalSubtoken;
+    uint season = 1;
+    
     address owner;
     uint counterNFT;
 
@@ -28,7 +37,7 @@ contract NftStaker {
 
     constructor() {
         parentNFT = IERC1155(0xddaAd340b0f1Ef65169Ae5E41A8b10776a75482d); // Change it to your NFT contract addr
-        totalSupply = 100;  // if parent contract change init minting, this var must change same
+        totalSubtoken = 100;  // if parent contract change init minting, this var must change same
         owner = msg.sender;
         counterNFT = 3;
     }
@@ -37,7 +46,7 @@ contract NftStaker {
         uint256 rewardPerTokenStored = rewards[_account];
         uint256 addReward = rewardPerToken(_account);
         rewardPerTokenStored += addReward;
-        totalSupply += addReward;
+        totalSubtoken += addReward;
 
         if (_account != address(0)) {
             rewards[_account] = rewardPerTokenStored;
@@ -53,13 +62,13 @@ contract NftStaker {
     }
 
     function rewardPerToken(address _account) public view returns (uint256) {
-        if (totalSupply == 0) {
+        if (totalSubtoken == 0) {
             return 0;
         }
         require(block.timestamp - stakes[_account].timestamp > 1000, "cycle cool time not yet erR!");
         
         // * 1e18 와 같은 수식 필요.
-        return (stakes[_account].amount * (block.timestamp - stakes[_account].timestamp)) / totalSupply / tokenRate;
+        return (stakes[_account].rate * (block.timestamp - stakes[_account].timestamp)) / seasonSupply[season];
     }
 
     // reward cool time
@@ -70,19 +79,23 @@ contract NftStaker {
 
 
 
-    function stake(uint256 _tokenId, uint256 _amount) public {
-        require(stakes[msg.sender].amount == 0, "unstack require");
+    function stake(uint256 _tokenId) public {
+        require(stakes[msg.sender].tokenId == 0, "unstack require");
+        require(parentNFT.balanceOf(msg.sender, _tokenId) != 0, "Not token Owner!");
 
-        stakes[msg.sender] = Stake(_tokenId, _amount, block.timestamp); 
-        parentNFT.safeTransferFrom(msg.sender, address(this), _tokenId, _amount, "0x00");
+        uint256 rate = parentNFT.viewTokenRate(_tokenId);
+
+        parentNFT.safeTransferFrom(msg.sender, address(this), _tokenId, 1, "0x00");
+        stakes[msg.sender] = Stake(_tokenId, rate, block.timestamp); 
+
         
     } 
 
     // once unstack take place, All stacking amount withdraw
     function unstake(address _account) public updateReward(_account) {
-        require(stakes[_account].amount > 0, "No Stake erR!");
+        require(stakes[_account].tokenId > 0, "No Stake erR!");
 
-        parentNFT.safeTransferFrom(address(this), _account, stakes[_account].tokenId, stakes[msg.sender].amount, "0x00");
+        parentNFT.safeTransferFrom(address(this), _account, stakes[_account].tokenId, 1, "0x00");
         //stakingTime[_account] += (block.timestamp - stakes[_account].timestamp);
         delete stakes[_account];
     }
@@ -104,9 +117,14 @@ contract NftStaker {
     //     parentNFT.setApprovalForAll(address(this), true);
     // }
 
-    function mintNFT(address _account, string calldata _tokenuri) public onlyOwner{
-        parentNFT.minting(_account, counterNFT, _tokenuri);
+    function mintNFT(address _account, string calldata _tokenuri, uint _tokenRate) public onlyOwner{
+        parentNFT.mintNFT(_account, counterNFT, _tokenuri, _tokenRate);
         counterNFT++;
+        seasonSupply[season];
+    }
+
+    function seasonUpdate() public onlyOwner {
+        season++;
     }
    
 
@@ -133,7 +151,11 @@ interface IERC1155 {
 
     function setStakeContract(address _contract) external;
 
-    function minting(address _account, uint _tokenId, string memory _tokenuri) external;
+    function mintNFT(address _account, uint _tokenId, string memory _tokenuri, uint256 _tokenRate) external;
+
+    function viewTokenRate(uint256 _tokenId) external returns(uint256);
+
+    function updateSeason() external;
 
     function balanceOf(address account, uint256 id) external view returns (uint256);
 
