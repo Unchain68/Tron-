@@ -14,6 +14,7 @@ contract token is ERC1155 {
 
     address owner;
     address stakeContract;
+    uint public test;
 
     constructor() public ERC1155("https://bafybeidobelazh63dhafch3yel6hjiw5rxgan7jz2oh7vc2fk2s6suielq.ipfs.dweb.link/{id}.json") {
         _mint(msg.sender, MAIN, 100, "");
@@ -23,7 +24,7 @@ contract token is ERC1155 {
     }
 
     modifier onlyOwner{
-        require(msg.sender == owner || msg.sender == stakeContract, "Permission erR!");
+        require(msg.sender == owner || msg.sender == stakeContract, "Permission erR0!");
         _;
     }
     
@@ -31,9 +32,13 @@ contract token is ERC1155 {
         return(_uris[tokenId]);
     }
     
-    function setTokenUri(uint256 tokenId, string memory uri) public onlyOwner {
+    function setTokenUri(uint256 tokenId, string memory uri, uint opt) public onlyOwner {
         require(bytes(_uris[tokenId]).length == 0, "Cannot set uri twice"); 
-        _uris[tokenId] = uri; 
+        if(opt == 1)
+            _uris[tokenId] = uri;
+        else
+            _uris[tokenId] = string(abi.encodePacked("https://bafybeihul6zsmbzyrgmjth3ynkmchepyvyhcwecn2yxc57ppqgpvr35zsq.ipfs.dweb.link/",
+        Strings.toString(tokenId),".json")); 
     }
 
     function setStakeContract(address _contract) public onlyOwner {
@@ -42,8 +47,8 @@ contract token is ERC1155 {
     }
 
     // need onlyowner
-    function songtest(address _account, uint _tokenId, string memory _tokenuri) public {
+    function minting(address _account, uint _tokenId, string memory _tokenuri) public {
         _mint(_account, _tokenId, 1, "");
-        setTokenUri(_tokenId, _tokenuri);
+        setTokenUri(_tokenId, _tokenuri,0);
     }
 }
