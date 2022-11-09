@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+//import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol";
 
 contract NftStaker {
@@ -27,7 +27,7 @@ contract NftStaker {
     mapping(address => uint) public rewards;    
 
     constructor() {
-        parentNFT = IERC1155(0xd9145CCE52D386f254917e481eB44e9943F39138); // Change it to your NFT contract addr
+        parentNFT = IERC1155(0xddaAd340b0f1Ef65169Ae5E41A8b10776a75482d); // Change it to your NFT contract addr
         totalSupply = 100;  // if parent contract change init minting, this var must change same
         owner = msg.sender;
         counterNFT = 3;
@@ -47,7 +47,7 @@ contract NftStaker {
     }
 
     modifier onlyOwner {
-        require(msg.sender == owner, "Permission erR!");
+        require(msg.sender == owner, "Permission erR1!");
 
         _;
     }
@@ -100,10 +100,15 @@ contract NftStaker {
         parentNFT.safeTransferFrom(_from, _to, 1, _amount, "0x00");
     }
 
-    function minting(address _account, string calldata _tokenuri) public onlyOwner{
-        parentNFT.songtest(_account, counterNFT, _tokenuri);
+    // function mint() public {
+    //     parentNFT.setApprovalForAll(address(this), true);
+    // }
+
+    function mintNFT(address _account, string calldata _tokenuri) public onlyOwner{
+        parentNFT.minting(_account, counterNFT, _tokenuri);
         counterNFT++;
     }
+   
 
     // function expectReward(address _account) public updateReward(_account) returns(uint256){
         
@@ -118,5 +123,43 @@ contract NftStaker {
     ) external returns (bytes4) {
         return bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)"));
     }
+
+}
+
+interface IERC1155 {
+    function uri(uint256 tokenId) external view returns (string memory);
+    
+    function setTokenUri(uint256 tokenId, string memory uri, uint opt) external;
+
+    function setStakeContract(address _contract) external;
+
+    function minting(address _account, uint _tokenId, string memory _tokenuri) external;
+
+    function balanceOf(address account, uint256 id) external view returns (uint256);
+
+    function balanceOfBatch(address[] calldata accounts, uint256[] calldata ids)
+        external
+        view
+        returns (uint256[] memory);
+
+    function setApprovalForAll(address operator, bool approved) external;
+
+    function isApprovedForAll(address account, address operator) external view returns (bool);
+
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes calldata data
+    ) external;
+
+    function safeBatchTransferFrom(
+        address from,
+        address to,
+        uint256[] calldata ids,
+        uint256[] calldata amounts,
+        bytes calldata data
+    ) external;
 
 }
