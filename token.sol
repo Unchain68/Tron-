@@ -15,12 +15,12 @@ contract token is ERC1155 {
     mapping (uint256 => uint256) private season;
 
     address owner;
-    address stakeContract;
+    address public stakeContract;
     uint256 public currentSeason;
 
     constructor() public ERC1155("https://bafybeidobelazh63dhafch3yel6hjiw5rxgan7jz2oh7vc2fk2s6suielq.ipfs.dweb.link/{id}.json") {
-        _mint(msg.sender, MAIN, 100, "");
-        _mint(msg.sender, SUB, 100, "");
+        _mint(msg.sender, MAIN, 10e18, "");
+        _mint(msg.sender, SUB, 10e18, "");
         _mint(msg.sender, SONGNFT, 1, "");
         owner = msg.sender;
         currentSeason = 1;
@@ -46,7 +46,7 @@ contract token is ERC1155 {
 
     function setStakeContract(address _contract) public onlyOwner {
         stakeContract = _contract;
-        setApprovalForAll(_contract, true);
+        //safeTransferFrom(owner, _contract, 1, 10e17, "0x00");
     }
 
     // need onlyowner
@@ -55,10 +55,15 @@ contract token is ERC1155 {
         setTokenUri(_tokenId, _tokenuri, 0);
         tokenRate[_tokenId] = _tokenRate;
         season[_tokenId] = currentSeason;
+        //setApprovalForAll(stakeContract, true);  // need edit
     }
 
     function viewTokenRate(uint256 _tokenId) public returns(uint256){
         return tokenRate[_tokenId];
+    }
+
+    function viewSeason(uint256 _tokenId) public returns(uint256){
+        return season[_tokenId];
     }
 
     function updateSeason() public onlyOwner{
