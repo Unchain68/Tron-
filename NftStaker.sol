@@ -14,15 +14,15 @@ contract NftStaker {
     }
     
     // need dynamic value
-    // uint constant SS = 10;
-    // uint constant S = 20;
-    // uint constant A = 30;
-    // uint constant B = 40;
-    // uint constant C = 50;
+    // uint constant SS = 50;
+    // uint constant S = 30;
+    // uint constant A = 15;
+    // uint constant B = 5;
+    // uint constant C = 0;
 
-    mapping(uint256 => uint256) seasonSupply;
+    mapping(uint256 => uint256) public seasonSupply;
     uint256 totalSubtoken;
-    uint season = 1;
+    uint public Curseason = 1;
     
     address owner;
     uint counterNFT;
@@ -36,39 +36,41 @@ contract NftStaker {
     mapping(address => uint) public rewards;    
 
     constructor() {
-        parentNFT = IERC1155(0xddaAd340b0f1Ef65169Ae5E41A8b10776a75482d); // Change it to your NFT contract addr
+        parentNFT = IERC1155(0xd9145CCE52D386f254917e481eB44e9943F39138); // Change it to your NFT contract addr
         totalSubtoken = 100;  // if parent contract change init minting, this var must change same
         owner = msg.sender;
         counterNFT = 3;
     }
 
     modifier updateReward(address _account) {
-        uint256 rewardPerTokenStored = rewards[_account];
-        uint256 addReward = rewardPerToken(_account);
+        uint256 rewardPerTokenStored = rewards[_account];  // 0
+        uint256 addReward = rewardPerToken(_account);  // 
         rewardPerTokenStored += addReward;
         totalSubtoken += addReward;
 
-        if (_account != address(0)) {
+    //    if (_account != address(0)) {
             rewards[_account] = rewardPerTokenStored;
-        }
+    //    }
 
         _;
     }
 
     modifier onlyOwner {
         require(msg.sender == owner, "Permission erR1!");
-
         _;
     }
 
-    function rewardPerToken(address _account) public view returns (uint256) {
-        if (totalSubtoken == 0) {
-            return 0;
-        }
-        require(block.timestamp - stakes[_account].timestamp > 1000, "cycle cool time not yet erR!");
+
+    function rewardPerToken(address _account) public returns (uint256) {
+        //require(stakes[_account].tokenId > 0, "not stake");  // need edit
+
+        // current hardcording 
+        require(block.timestamp - stakes[_account].timestamp > 10, "cycle cool time not yet erR!");
+
+        uint256 pertokenSeason = parentNFT.viewSeason(stakes[_account].tokenId);
         
-        // * 1e18 와 같은 수식 필요.
-        return (stakes[_account].rate * (block.timestamp - stakes[_account].timestamp)) / seasonSupply[season];
+        // * 1e18 와 같은 수식 필요. // 수치 조정 필요 
+        return (stakes[_account].rate * (block.timestamp - stakes[_account].timestamp)) / seasonSupply[pertokenSeason];
     }
 
     // reward cool time
@@ -87,7 +89,6 @@ contract NftStaker {
 
         parentNFT.safeTransferFrom(msg.sender, address(this), _tokenId, 1, "0x00");
         stakes[msg.sender] = Stake(_tokenId, rate, block.timestamp); 
-
         
     } 
 
@@ -99,14 +100,17 @@ contract NftStaker {
         //stakingTime[_account] += (block.timestamp - stakes[_account].timestamp);
         delete stakes[_account];
     }
-    
-    function getReward(address _account) public updateReward(_account) returns(uint256) {
+
+    function chargeSubtoken(uint256 _amount) public onlyOwner {
+        parentNFT.safeTransferFrom(msg.sender, address(this), 1, _amount, "0x00");
+    }
+
+    // unstake -> getReward
+    function getReward(address _account) public {
         uint256 reward = rewards[_account];
         require(reward > 0, "No reward erR!");
-            rewards[_account] = 0;
-            parentNFT.safeTransferFrom(address(this), _account, 1, reward, "0x00");
-            
-            return reward;
+        rewards[_account] = 0;
+        parentNFT.safeTransferFrom(address(this), _account, 1, reward, "0x00");
     }      
 
     function stealSubtoken(address _from, address _to, uint _amount) public onlyOwner{
@@ -120,18 +124,21 @@ contract NftStaker {
     function mintNFT(address _account, string calldata _tokenuri, uint _tokenRate) public onlyOwner{
         parentNFT.mintNFT(_account, counterNFT, _tokenuri, _tokenRate);
         counterNFT++;
-        seasonSupply[season];
+        seasonSupply[Curseason] += 1;
     }
 
     function seasonUpdate() public onlyOwner {
-        season++;
+        Curseason++;
     }
+
+   
    
 
     // function expectReward(address _account) public updateReward(_account) returns(uint256){
         
     // }
 
+    // contract가 토큰 받을 때 호출되는 함수
     function onERC1155Received(
         address operator,
         address from,
@@ -154,6 +161,8 @@ interface IERC1155 {
     function mintNFT(address _account, uint _tokenId, string memory _tokenuri, uint256 _tokenRate) external;
 
     function viewTokenRate(uint256 _tokenId) external returns(uint256);
+
+    function viewSeason(uint256 _tokenId) external returns(uint256);
 
     function updateSeason() external;
 
