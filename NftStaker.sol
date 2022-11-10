@@ -14,15 +14,16 @@ contract NftStaker {
     }
     
     // need dynamic value
-    // uint constant SS = 50;
-    // uint constant S = 30;
-    // uint constant A = 15;
-    // uint constant B = 5;
-    // uint constant C = 0;
+    //  SS = 50
+    //  S = 30
+    //  A = 15
+    //  B = 5
+    //  C = 0
 
     mapping(uint256 => uint256) public seasonSupply;
-    uint256 totalSubtoken;
+    uint256 totalMaintoken;
     uint public Curseason = 1;
+    uint public stealpossible = 30;
     
     address owner;
     uint counterNFT;
@@ -37,7 +38,7 @@ contract NftStaker {
 
     constructor() {
         parentNFT = IERC1155(0xd9145CCE52D386f254917e481eB44e9943F39138); // Change it to your NFT contract addr
-        totalSubtoken = 100;  // if parent contract change init minting, this var must change same
+        totalMaintoken = 100;  // if parent contract change init minting, this var must change same
         owner = msg.sender;
         counterNFT = 3;
     }
@@ -46,7 +47,7 @@ contract NftStaker {
         uint256 rewardPerTokenStored = rewards[_account];  // 0
         uint256 addReward = rewardPerToken(_account);  // 
         rewardPerTokenStored += addReward;
-        totalSubtoken += addReward;
+        totalMaintoken += addReward;
 
     //    if (_account != address(0)) {
             rewards[_account] = rewardPerTokenStored;
@@ -73,13 +74,6 @@ contract NftStaker {
         return (stakes[_account].rate * (block.timestamp - stakes[_account].timestamp)) / seasonSupply[pertokenSeason];
     }
 
-    // reward cool time
-    // function lastTimeReward(address _account) public view returns (uint) {
-        
-    //     return block.timestamp; 
-    // }
-
-
 
     function stake(uint256 _tokenId) public {
         require(stakes[msg.sender].tokenId == 0, "unstack require");
@@ -102,7 +96,7 @@ contract NftStaker {
     }
 
     function chargeSubtoken(uint256 _amount) public onlyOwner {
-        parentNFT.safeTransferFrom(msg.sender, address(this), 1, _amount, "0x00");
+        parentNFT.safeTransferFrom(msg.sender, address(this), 0, _amount, "0x00");
     }
 
     // unstake -> getReward
@@ -110,19 +104,35 @@ contract NftStaker {
         uint256 reward = rewards[_account];
         require(reward > 0, "No reward erR!");
         rewards[_account] = 0;
-        parentNFT.safeTransferFrom(address(this), _account, 1, reward, "0x00");
+        parentNFT.safeTransferFrom(address(this), _account, 0, reward, "0x00");
     }      
 
-    function stealSubtoken(address _from, address _to, uint _amount) public onlyOwner{
-        parentNFT.safeTransferFrom(_from, _to, 1, _amount, "0x00");
+    function steal(address _owner, address _stealer, uint _amount, uint _stealtokenId) public onlyOwner{
+        require(parentNFT.balanceOf(_stealer, _stealtokenId) > 0, "Not have Stealer Token1");
+        require(parentNFT.checkStealer(_stealtokenId), "Not have Stealer Token2");
+
+        require(parentNFT.balanceOf(_owner, 0) > _amount, "owner : not enough");
+        require(parentNFT.balanceOf(_owner, 0)*20/100 < _amount, "excess steal amount");
+
+        uint randNonce = 0;
+        uint random = uint(keccak256(abi.encodePacked(block.timestamp, msg.sender, randNonce))) % 100;
+
+        if(random < stealpossible){  // steal success
+            parentNFT.safeTransferFrom(_owner, _stealer, 0, _amount, "0x00");
+        } 
+        else {  // steal fail
+            parentNFT.burn(_stealer, 0, _amount);
+            parentNFT.burn(_stealer, _stealtokenId, 1);
+        }
     }
 
-    // function mint() public {
-    //     parentNFT.setApprovalForAll(address(this), true);
-    // }
 
-    function mintNFT(address _account, string calldata _tokenuri, uint _tokenRate) public onlyOwner{
-        parentNFT.mintNFT(_account, counterNFT, _tokenuri, _tokenRate);
+    function mintMush(address _account, string calldata _tokenuri, uint _tokenRate) public onlyOwner{
+        uint randNonce = 0;
+        uint random = uint(keccak256(abi.encodePacked(block.timestamp, msg.sender, randNonce))) % 1000;
+
+
+        parentNFT.mintMush(_account, counterNFT, _tokenuri, _tokenRate);
         counterNFT++;
         seasonSupply[Curseason] += 1;
     }
@@ -130,8 +140,6 @@ contract NftStaker {
     function seasonUpdate() public onlyOwner {
         Curseason++;
     }
-
-   
    
 
     // function expectReward(address _account) public updateReward(_account) returns(uint256){
@@ -152,15 +160,20 @@ contract NftStaker {
 }
 
 interface IERC1155 {
+
     function uri(uint256 tokenId) external view returns (string memory);
     
     function setTokenUri(uint256 tokenId, string memory uri, uint opt) external;
 
     function setStakeContract(address _contract) external;
 
-    function mintNFT(address _account, uint _tokenId, string memory _tokenuri, uint256 _tokenRate) external;
+    function mintMush(address _account, uint _tokenId, string memory _tokenuri, uint256 _tokenRate) external;
 
     function viewTokenRate(uint256 _tokenId) external returns(uint256);
+
+    function checkStealer(uint _stealtokenId) external view returns(bool);
+
+    function burn(address _account, uint _tokenId, uint _amount) external;
 
     function viewSeason(uint256 _tokenId) external returns(uint256);
 
