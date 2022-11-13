@@ -101,7 +101,7 @@ contract NftStaker {
 
     function stake(uint256 _tokenId) public {
         require(stakes[msg.sender].tokenId == 0, "unstack require");
-        require(parentNFT.balanceOf(msg.sender, _tokenId) != 0, "Not token Owner!"); //need to optimize
+        require(parentNFT.balanceOf(msg.sender, _tokenId) != 0, "Mushroom doesn't exist"); //need to optimize
 
         uint256 rate = parentNFT.viewTokenRate(_tokenId);
 
