@@ -2,7 +2,7 @@
 pragma solidity ^0.8.7;
 
 //import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-import "./ERC1155Receiver.sol";
+import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Receiver.sol";
 
 contract NftStaker {
     IERC1155 public parentNFT;
@@ -12,7 +12,7 @@ contract NftStaker {
         uint256 rate;
         uint256 timestamp;
     }
-
+    
     //  SS = 50
     //  S = 30
     //  A = 15
@@ -23,16 +23,18 @@ contract NftStaker {
     uint256 totalMaintoken;
     uint public Curseason = 1;
     uint public stealpossible = 30;
-
+    
     address owner;
     uint counterNFT;
 
     mapping(address => Stake) public stakes;      // stake details
-
-    mapping(address => uint) public rewards;
+    
+    mapping(address => uint[]) public TotalNFTbalance;
+    
+    mapping(address => uint) public rewards;    
 
     constructor() {
-        parentNFT = IERC1155(0x101faa7d58373501A90b9c5834362e21F2c99452); // Change it to your NFT contract addr
+        parentNFT = IERC1155(0x87a0232dFAb2b8DCc7649277a985A917bcc987F2); // Change it to your NFT contract addr
         totalMaintoken = 10000;  // if parent contract change init minting, this var must change same
         owner = msg.sender;
         counterNFT = 3;  // tokenid start 3
@@ -40,12 +42,12 @@ contract NftStaker {
 
     modifier updateReward(address _account) {
         uint256 rewardPerTokenStored = rewards[_account];
-        uint256 addReward = rewardPerToken(_account);
+        uint256 addReward = rewardPerToken(_account);  
         rewardPerTokenStored += addReward;
         totalMaintoken += addReward;
 
         rewards[_account] = rewardPerTokenStored;
-
+        
         _;
     }
 
@@ -53,28 +55,33 @@ contract NftStaker {
         require(msg.sender == owner, "Permission erR1!");
         _;
     }
-
+    
     function chargeMaintoken(uint256 _amount) public onlyOwner {
         parentNFT.safeTransferFrom(msg.sender, address(this), 0, _amount, "0x00");
     }
-
+    
     function mintMushInit(address _account, string calldata _tokenuri, uint _tokenRate) public onlyOwner{
 
         parentNFT.mintMush(_account, counterNFT, _tokenuri, _tokenRate);
+        TotalNFTbalance[_account].push(counterNFT);
         counterNFT++;
         seasonMushSupply[Curseason] += 1;
     }
-
+    
+    function perTotalNFTs(address _account) public view returns(uint256){
+        return TotalNFTbalance[_account].length;
+    }
+    
     function MushToSpore(uint _tokenId, uint _tokenRate, string memory _uri) public {
         require(parentNFT.balanceOf(msg.sender, _tokenId) > 0, "Not have SporeNFT");
-
+        
         parentNFT._MushToSpore(_tokenId, _tokenRate, _uri);
         seasonMushSupply[Curseason] -= 1;
     }
-
+    
     function SporeToMush(uint _tokenId, uint _tokenRate, string memory _uri) public {
         require(parentNFT.balanceOf(msg.sender, _tokenId) > 0, "Not have SporeNFT");
-
+        
         parentNFT._SporeToMush(_tokenId, _tokenRate, _uri);
         seasonMushSupply[Curseason] += 1;
     }
@@ -86,8 +93,8 @@ contract NftStaker {
         require(block.timestamp - stakes[_account].timestamp > 10, "cycle cool time not yet erR!");
 
         uint256 pertokenSeason = parentNFT.viewSeason(stakes[_account].tokenId);
-
-        // * 1e18 와 같은 수식 필요 (수치 조정 필요)
+        
+        // * 1e18 와 같은 수식 필요 (수치 조정 필요) 
         return (stakes[_account].rate * (block.timestamp - stakes[_account].timestamp)) / seasonMushSupply[pertokenSeason];
     }
 
@@ -99,17 +106,17 @@ contract NftStaker {
         uint256 rate = parentNFT.viewTokenRate(_tokenId);
 
         parentNFT.safeTransferFrom(msg.sender, address(this), _tokenId, 1, "0x00");
-        stakes[msg.sender] = Stake(_tokenId, rate, block.timestamp);
+        stakes[msg.sender] = Stake(_tokenId, rate, block.timestamp); 
+        
+    } 
 
-    }
-
-    // once unstack take place, All stacking amount withdraw & get reward
+    // once unstack take place, All stacking amount withdraw & get reward 
     function unstake(address _account) public updateReward(_account) {
         require(stakes[_account].tokenId > 0, "No Stake erR!");
 
         parentNFT.safeTransferFrom(address(this), _account, stakes[_account].tokenId, 1, "0x00");
         delete stakes[_account];
-
+        
         getReward(_account); // unstake -> getReward
     }
 
@@ -120,7 +127,7 @@ contract NftStaker {
         rewards[_account] = 0;
         parentNFT.safeTransferFrom(address(this), _account, 0, reward, "0x00");
     }
-
+    
     function mintStealerNFT(address _account, string memory _uri) public onlyOwner {
         parentNFT.mintStealer(_account, counterNFT, _uri);
         counterNFT++;
@@ -140,14 +147,14 @@ contract NftStaker {
             parentNFT.safeTransferFrom(address(this), _stealer, 0, _amount, "0x00");
             rewards[_owner] -= _amount;
             return true;
-        }
+        } 
         else {  // steal fail
             parentNFT.burn(_stealer, 0, _amount);
             parentNFT.burn(_stealer, _stealtokenId, 1);
             totalMaintoken -= _amount;
             return false;
         }
-
+        
     }
 
 
@@ -156,12 +163,12 @@ contract NftStaker {
     function seasonUpdate() public onlyOwner {
         Curseason++;
     }
-
+   
 
     // function expectReward(address _account) public updateReward(_account) returns(uint256){
-
+        
     // }
-
+    
 
     // contract가 토큰 받을 때 호출되는 함수
     function onERC1155Received(
@@ -179,17 +186,17 @@ contract NftStaker {
 interface IERC1155 {
 
     function uri(uint256 tokenId) external view returns (string memory);
-
+    
     function setTokenUri(uint256 tokenId, string memory uri, uint opt) external;
 
     function setStakeContract(address _contract) external;
 
     function mintMush(address _account, uint _tokenId, string memory _tokenuri, uint256 _tokenRate) external;
-
+    
     function mintStealer(address _account, uint _tokenId, string memory _tokenuri) external;
-
+    
     function _SporeToMush(uint _tokenId, uint256 _tokenRate, string memory _tokenuri) external;
-
+    
     function _MushToSpore(uint _tokenId, uint256 _tokenRate, string memory _tokenuri) external;
 
     function viewTokenRate(uint256 _tokenId) external returns(uint256);
